@@ -1,48 +1,46 @@
-from flask import Flask, render_template, request
+import os
+from flask import Flask, request, jsonify
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if present
+load_dotenv()
 
 app = Flask(__name__)
 
-# -------------------
-# Hardcoded API key
-# -------------------
-RAPIDAPI_KEY = "41298f856dmsh6ada35ec8b14548p14d735jsn78a502f80c1a"
-BASE_URL = "https://rto-vehicle-information-india.p.rapidapi.com"
+# Your bot token from environment variables
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")  # Optional, if you want fixed chat_id
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-# -------------------
-# Routes
-# -------------------
-@app.route("/", methods=["GET", "POST"])
-def index():
-    vehicle_data = None
-    challan_data = None
-    error_message = None
+@app.route('/')
+def home():
+    return "🚀 KARMALabs RTO API is live!"
 
-    if request.method == "POST":
-        vehicle_no = request.form.get("vehicle_no", "").strip().upper()
+@app.route('/send', methods=['POST'])
+def send_message():
+    try:
+        data = request.json
+        message_text = data.get("message", "")
+        chat_id = data.get("chat_id", CHAT_ID)
 
-        if not vehicle_no:
-            error_message = "Please enter a vehicle number."
+        if not message_text or not chat_id:
+            return jsonify({"error": "message and chat_id are required"}), 400
+
+        payload = {
+            "chat_id": chat_id,
+            "text": message_text
+        }
+        resp = requests.post(TELEGRAM_API_URL, json=payload)
+
+        if resp.status_code == 200:
+            return jsonify({"status": "success", "message": message_text})
         else:
-            # --- Step 1: Get Vehicle Info ---
-            try:
-                headers = {
-                    "Content-Type": "application/json",
-                    "x-rapidapi-host": "rto-vehicle-information-india.p.rapidapi.com",
-                    "x-rapidapi-key": RAPIDAPI_KEY
-                }
-                payload = {
-                    "vehicle_no": vehicle_no,
-                    "consent": "Y",
-                    "consent_text": "I hereby give my consent for KARMALabs to fetch my information"
-                }
+            return jsonify({"status": "failed", "error": resp.text}), 500
 
-                vehicle_response = requests.post(f"{BASE_URL}/getVehicleInfo", json=payload, headers=headers)
-                vehicle_json = vehicle_response.json()
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
-                if vehicle_json.get("status"):
-                    vehicle_data = vehicle_json.get("data")
-                else:
-                    error_message = vehicle_json.get("message", "Unable to fetch vehicle data.")
-
-                # --- Step
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
