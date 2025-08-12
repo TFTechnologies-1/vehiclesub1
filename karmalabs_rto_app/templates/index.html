@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KARMALabs — Vehicle Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="container">
+    <h1>KARMALabs</h1>
+    <p class="tag">RC & Challan Lookup</p>
+  </div>
+</header>
+<main class="container">
+  <section class="card">
+    <form method="post" action="/search" class="search-form">
+      <input name="regNumber" placeholder="Enter registration number e.g. UP16CD1996" value="{{ reg or '' }}" />
+      <button type="submit">Search</button>
+    </form>
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+  </section>
+
+  {% if rc %}
+  <section class="card">
+    <h2>Vehicle RC Details</h2>
+    {% if rc.status %}
+      {% set d = rc.data %}
+      <table>
+        <tr><th>Registration No</th><td>{{ d.registration_no or d.get('registration_no') }}</td></tr>
+        <tr><th>Authority</th><td>{{ d.registration_authority or '' }}</td></tr>
+        <tr><th>Owner</th><td>{{ d.owner_name or '' }}</td></tr>
+        <tr><th>Maker / Model</th><td>{{ d.maker_model or '' }}</td></tr>
+        <tr><th>Fuel Type</th><td>{{ d.fuel_type or '' }}</td></tr>
+        <tr><th>Color</th><td>{{ d.vehicle_color or '' }}</td></tr>
+        <tr><th>RC Status</th><td>{{ d.rc_status or '' }}</td></tr>
+        <tr><th>Fitness Upto</th><td>{{ d.fitness_upto or '' }}</td></tr>
+        <tr><th>Insurance Upto</th><td>{{ d.insurance_upto or '' }}</td></tr>
+      </table>
+    {% else %}
+      <p>No RC data available. {{ rc.get('message','') }}</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <h2>Challans</h2>
+    {% if challans %}
+      <p class="small">Total outstanding: ₹{{ '%.2f'|format(total) }}</p>
+      <table>
+        <thead><tr><th>Challan No</th><th>Date</th><th>Amount</th><th>Status</th><th>Offences</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for c in challans %}
+          <tr>
+            <td>{{ c.challan_no or c.get('challan_no') }}</td>
+            <td>{{ c.challan_date or '' }}</td>
+            <td>₹{{ c.amount or '0' }}</td>
+            <td>{{ c.challan_status or '' }}</td>
+            <td>
+              {% if c.offences %}
+                {% if c.offences is string %}
+                  {{ c.offences }}
+                {% else %}
+                  {% for o in c.offences %}
+                    <div>{{ o }}</div>
+                  {% endfor %}
+                {% endif %}
+              {% endif %}
+            </td>
+            <td>
+              {% if c.challan_payment_url %}
+                <a href="{{ c.challan_payment_url }}" target="_blank">Pay</a>
+              {% endif %}
+              {% if c.challan_receipt %}
+                | <a href="{{ c.challan_receipt }}" target="_blank">Receipt</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No challans found.</p>
+    {% endif %}
+  </section>
+
+</main>
+<footer class="bottom">
+  <div class="container">© {{ 2025 }} KARMALabs</div>
+</footer>
+</body>
+</html>
