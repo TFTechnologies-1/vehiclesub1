@@ -1,47 +1,53 @@
-import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template_string
 import requests
-from dotenv import load_dotenv
-
-# Load environment variables from .env file if present
-load_dotenv()
 
 app = Flask(__name__)
 
-# Your bot token from environment variables
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")  # Optional, if you want fixed chat_id
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+# Hardcoded RapidAPI credentials
+API_URL = "https://rto-vehicle-information-india.p.rapidapi.com/getVehicleInfo"
+API_KEY = "41298f856dmsh6ada35ec8b14548p14d735jsn78a502f80c1a"  # Replace if needed
 
-@app.route('/')
+HTML_FORM = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KARMALabs - Vehicle Info Lookup</title>
+</head>
+<body>
+    <h2>Vehicle Information Lookup</h2>
+    <form method="POST">
+        Vehicle Number: <input type="text" name="vehicle_no" required>
+        <button type="submit">Search</button>
+    </form>
+    {% if data %}
+        <h3>Result:</h3>
+        <pre>{{ data }}</pre>
+    {% endif %}
+</body>
+</html>
+"""
+
+@app.route("/", methods=["GET", "POST"])
 def home():
-    return "🚀 KARMALabs RTO API is live!"
-
-@app.route('/send', methods=['POST'])
-def send_message():
-    try:
-        data = request.json
-        message_text = data.get("message", "")
-        chat_id = data.get("chat_id", CHAT_ID)
-
-        if not message_text or not chat_id:
-            return jsonify({"error": "message and chat_id are required"}), 400
-
+    data = None
+    if request.method == "POST":
+        vehicle_no = request.form["vehicle_no"]
         payload = {
-            "chat_id": chat_id,
-            "text": message_text
+            "vehicle_no": vehicle_no,
+            "consent": "Y",
+            "consent_text": "I hereby give my consent for KARMALabs API to fetch my information"
         }
-        resp = requests.post(TELEGRAM_API_URL, json=payload)
-
-        if resp.status_code == 200:
-            return jsonify({"status": "success", "message": message_text})
-        else:
-            return jsonify({"status": "failed", "error": resp.text}), 500
-
-    except Exception as e:
-        return jsonify({"status": "error", "error": str(e)}), 500
+        headers = {
+            "Content-Type": "application/json",
+            "x-rapidapi-host": "rto-vehicle-information-india.p.rapidapi.com",
+            "x-rapidapi-key": API_KEY
+        }
+        try:
+            response = requests.post(API_URL, json=payload, headers=headers)
+            data = response.json()
+        except Exception as e:
+            data = {"error": str(e)}
+    return render_template_string(HTML_FORM, data=data)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-
+    app.run(host="0.0.0.0", port=5000)
