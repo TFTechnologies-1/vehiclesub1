@@ -3,9 +3,8 @@ import requests
 
 app = Flask(__name__)
 
-# Hardcoded RapidAPI credentials
 API_URL = "https://rto-vehicle-information-india.p.rapidapi.com/getVehicleInfo"
-API_KEY = "41298f856dmsh6ada35ec8b14548p14d735jsn78a502f80c1a"  # Replace if needed
+API_KEY = "41298f856dmsh6ada35ec8b14548p14d735jsn78a502f80c1a"
 
 HTML_FORM = """
 <!DOCTYPE html>
@@ -19,9 +18,9 @@ HTML_FORM = """
         Vehicle Number: <input type="text" name="vehicle_no" required>
         <button type="submit">Search</button>
     </form>
-    {% if data %}
-        <h3>Result:</h3>
-        <pre>{{ data }}</pre>
+    {% if raw %}
+        <h3>Raw API Response:</h3>
+        <pre>{{ raw }}</pre>
     {% endif %}
 </body>
 </html>
@@ -29,9 +28,9 @@ HTML_FORM = """
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    data = None
+    raw = None
     if request.method == "POST":
-        vehicle_no = request.form["vehicle_no"]
+        vehicle_no = request.form["vehicle_no"].strip().upper()
         payload = {
             "vehicle_no": vehicle_no,
             "consent": "Y",
@@ -44,10 +43,10 @@ def home():
         }
         try:
             response = requests.post(API_URL, json=payload, headers=headers)
-            data = response.json()
+            raw = response.text  # Show raw API output
         except Exception as e:
-            data = {"error": str(e)}
-    return render_template_string(HTML_FORM, data=data)
+            raw = f"Error: {str(e)}"
+    return render_template_string(HTML_FORM, raw=raw)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
